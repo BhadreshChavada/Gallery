@@ -7,7 +7,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +16,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.photocatalogue.Gallery.GalleryFolderActivity;
+import com.photocatalogue.Utils.Prefs;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,9 +37,25 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
     }
 
-    public void createFolder(View view) {
-        if (checkPermissions()) {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        String path = Prefs.newInstance(getApplicationContext()).getDesPath();
+        if (path.length() > 0) {
+            if (!new File(path).exists()) {
+                createFolder();
+            }
+        } else {
+            createFolder();
+        }
+    }
 
+    public void createFolder(View view) {
+        createFolder();
+    }
+
+    public void createFolder() {
+        if (checkPermissions()) {
             final Dialog dialog = new Dialog(MainActivity.this);
             dialog.setContentView(R.layout.layout_create_folder);
             final EditText edtFolderName = (EditText) dialog.findViewById(R.id.edt_folder_name);
@@ -49,15 +65,15 @@ public class MainActivity extends AppCompatActivity {
                     if (edtFolderName.getText().toString().length() > 0) {
                         if (FolderCreate(edtFolderName.getText().toString()))
                             dialog.dismiss();
-
                     } else {
                         Toast.makeText(MainActivity.this, "Please Enter Folder Name", Toast.LENGTH_SHORT).show();
                     }
                 }
             });
             dialog.show();
+        } else {
+            createFolder();
         }
-
     }
 
     private boolean FolderCreate(String folderName) {
@@ -68,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
             success = folder.mkdirs();
         }
         if (success) {
+            Prefs.newInstance(getApplicationContext()).saveDesPath(folder.getAbsolutePath());
             // Do something on success
             Toast.makeText(this, "create folder SuccessFully", Toast.LENGTH_SHORT).show();
             return true;
@@ -98,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean checkPermissions() {
+    private synchronized boolean checkPermissions() {
         int result;
         List<String> listPermissionsNeeded = new ArrayList<>();
         for (String p : permissions) {
@@ -114,41 +131,25 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Granted", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Not Granted", Toast.LENGTH_SHORT).show();
-                }
-                return;
-            }
-
-            case MY_PERMISSIONS_REQUEST_CAMERA: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Camera Granted", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Camera Not Granted", Toast.LENGTH_SHORT).show();
-                }
-                return;
-            }
-
-        }
-    }
+//    @Override
+//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+//                                           @NonNull int[] grantResults) {
+//        switch (requestCode) {
+//            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE: {
+//                return;
+//            }
+//
+//            case MY_PERMISSIONS_REQUEST_CAMERA: {
+//                return;
+//            }
+//
+//        }
+//    }
 
 
     private void getAllFilesOfDir(File directory) {
         Log.d("TAG", "Directory: " + directory.getAbsolutePath() + "\n");
-
         final File[] files = directory.listFiles();
-
         if (files != null) {
             for (File file : files) {
                 if (file != null) {
